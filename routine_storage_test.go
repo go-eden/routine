@@ -3,48 +3,49 @@ package routine
 import (
 	"github.com/stretchr/testify/assert"
 	"math/rand"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
 )
 
-func init() {
-	storageGCInterval = time.Millisecond * 50 // for faster test
-}
-
 func TestStorage(t *testing.T) {
-	var s storage
-
-	for i := 0; i < 100; i++ {
-		src := "hello"
-		s.Set(src)
-		p := s.Get()
-		assert.True(t, p.(string) == src)
-	}
+	s := newStorage()
 
 	for i := 0; i < 1000; i++ {
-		num := rand.Int()
-		s.Set(num)
-		num2 := s.Get()
-		assert.True(t, num2.(int) == num)
+		str := "hello"
+		s.Set(str)
+		p := s.Get()
+		assert.True(t, p.(string) == str)
 	}
+	assert.True(t, s.Del() != nil)
+	assert.True(t, s.Get() == nil)
+}
 
-	v := s.Del()
-	assert.True(t, v != nil)
+// test too many storages
+func TestStorageTooMany(t *testing.T) {
+	var ss []*storage
+	for i := len(keyMap); i < keyCnt; i++ {
+		ss = append(ss, newStorage())
+	}
+	assert.Panics(t, func() {
+		newStorage()
+	})
+	_ = ss
 
-	s.Clear()
-	v = s.Get()
-	assert.True(t, v == nil)
+	// Avoid affecting other tests
+	runtime.GC()
+	time.Sleep(time.Millisecond * 10)
 }
 
 func TestStorageConcurrency(t *testing.T) {
 	const concurrency = 100
 	const loopTimes = 100000
+	var wg sync.WaitGroup
 
-	var s storage
+	s := newStorage()
 
-	waiter := new(sync.WaitGroup)
-	waiter.Add(concurrency)
+	wg.Add(concurrency)
 	for i := 0; i < concurrency; i++ {
 		go func() {
 			v := rand.Uint64()
@@ -53,41 +54,15 @@ func TestStorageConcurrency(t *testing.T) {
 				tmp := s.Get()
 				assert.True(t, tmp.(uint64) == v)
 			}
-			waiter.Done()
+			wg.Done()
 		}()
 	}
-	waiter.Wait()
+	wg.Wait()
 }
 
-func TestStorageGC(t *testing.T) {
-	var s1, s2, s3, s4, s5 storage
-
-	// use LocalStorage in multi goroutines
-	for i := 0; i < 10; i++ {
-		for i := 0; i < 1000; i++ {
-			go func() {
-				s1.Set("hello world")
-				s2.Set(true)
-				s3.Set(&s3)
-				s4.Set(rand.Int())
-				s5.Set(time.Now())
-			}()
-		}
-		assert.True(t, gcRunning(), "#%v, timer not running?", i)
-
-		// wait for a while
-		time.Sleep(storageGCInterval + time.Second)
-		assert.True(t, !gcRunning(), "#%v, timer not stoped?", i)
-		storeMap := storages.Load().(map[int64]*store)
-		assert.True(t, len(storeMap) == 0, "#%v, storeMap not empty - %d", i, len(storeMap))
-	}
-
-	//time.Sleep(time.Minute)
-}
-
-// BenchmarkLoadCurrentStore-12    	 9630090	       118.2 ns/op	      16 B/op	       1 allocs/op
+// BenchmarkStorage-12    	 8102013	       133.6 ns/op	      16 B/op	       1 allocs/op
 func BenchmarkStorage(b *testing.B) {
-	var s storage
+	s := newStorage()
 	var variable = "hello world"
 	b.ReportAllocs()
 	b.ResetTimer()

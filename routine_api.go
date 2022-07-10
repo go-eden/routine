@@ -1,6 +1,38 @@
 package routine
 
-import "fmt"
+import (
+	"github.com/go-eden/routine/internal/g"
+	"unsafe"
+)
+
+// GStatus represents the real status of runtime.g
+type GStatus uint32
+
+const (
+	GIdle      GStatus = 0 // see runtime._Gidle
+	GRunnable  GStatus = 1 // see runtime._Grunnable
+	GRunning   GStatus = 2 // see runtime._Grunning
+	GSyscall   GStatus = 3 // see runtime._Gsyscall
+	GWaiting   GStatus = 4 // see runtime._Gwaiting
+	GMoribund  GStatus = 5 // see runtime._Gmoribund_unused
+	GDead      GStatus = 6 // see runtime._Gdead
+	GEnqueue   GStatus = 7 // see runtime._Genqueue_unused
+	GCopystack GStatus = 8 // see runtime._Gcopystack
+	GPreempted GStatus = 9 // see runtime._Gpreempted
+)
+
+// G defines some usefull api to access the underlying go-routine.
+type G interface {
+
+	// Goid returns g.goid
+	Goid() int64
+
+	// Labels returns g.labels, which's real type is map[string]string
+	Labels() map[string]string
+
+	// Status returns g.atomicstatus
+	Status() GStatus
+}
 
 // LocalStorage provides goroutine-local variables.
 type LocalStorage interface {
@@ -13,18 +45,15 @@ type LocalStorage interface {
 
 	// Del delete the value from the current goroutine's local storage, and return it.
 	Del() (oldValue interface{})
-
-	// Clear delete values from all goroutine's local storages.
-	Clear()
 }
 
-// ImmutableContext represents all local storages of one goroutine.
+// ImmutableContext represents all local allStoreMap of one goroutine.
 type ImmutableContext struct {
 	gid    int64
-	values map[uintptr]interface{}
+	values map[int]interface{}
 }
 
-// Go start an new goroutine, and copy all local storages from current goroutine.
+// Go start an new goroutine, and copy all local allStoreMap from current goroutine.
 func Go(f func()) {
 	ic := BackupContext()
 	go func() {
@@ -33,10 +62,10 @@ func Go(f func()) {
 	}()
 }
 
-// BackupContext copy all local storages into an ImmutableContext instance.
+// BackupContext copy all local allStoreMap into an ImmutableContext instance.
 func BackupContext() *ImmutableContext {
-	s := loadCurrentStore()
-	data := make(map[uintptr]interface{}, len(s.values))
+	s := loadStore()
+	data := make(map[int]interface{}, len(s.values))
 	for k, v := range s.values {
 		data[k] = v
 	}
@@ -48,7 +77,7 @@ func InheritContext(ic *ImmutableContext) {
 	if ic == nil || ic.values == nil {
 		return
 	}
-	s := loadCurrentStore()
+	s := loadStore()
 	for k, v := range ic.values {
 		s.values[k] = v
 	}
@@ -56,31 +85,15 @@ func InheritContext(ic *ImmutableContext) {
 
 // NewLocalStorage create and return an new LocalStorage instance.
 func NewLocalStorage() LocalStorage {
-	t := new(storage)
-	t.Clear()
-	return t
+	return new(storage)
 }
 
-// Goid return the current goroutine's unique id.
-// It will try get gid by native cgo/asm for better performance,
-// and could parse gid from stack for failover supporting.
-func Goid() (id int64) {
-	var succ bool
-	if id, succ = getGoidByNative(); !succ {
-		// no need to warning
-		id = getGoidByStack()
-	}
-	return
+// Goid get the unique goid of the current routine.
+func Goid() int64 {
+	return *(*int64)(unsafe.Pointer(uintptr(g.G()) + goidOffset))
 }
 
-// AllGoids return all goroutine's goid in the current golang process.
-// It will try load all goid from runtime natively for better performance,
-// and fallover to runtime.Stack, which is realy inefficient.
-func AllGoids() (ids []int64) {
-	var err error
-	if ids, err = getAllGoidByNative(); err != nil {
-		fmt.Println("[WARNING] cannot get all goid from runtime natively, now fallover to stack info, this will be very inefficient!!!")
-		ids = getAllGoidByStack()
-	}
-	return
+// GetG returns the accessor of the current routine.
+func GetG() G {
+	return newGAccessor()
 }

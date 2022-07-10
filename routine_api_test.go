@@ -10,19 +10,6 @@ func TestGoid(t *testing.T) {
 	t.Log(Goid())
 }
 
-func TestAllGoid(t *testing.T) {
-	const num = 10
-	for i := 0; i < num; i++ {
-		go func() {
-			time.Sleep(time.Second)
-		}()
-	}
-	time.Sleep(time.Millisecond)
-
-	ids := AllGoids()
-	t.Log("all gids: ", len(ids), ids)
-}
-
 func TestGoStorage(t *testing.T) {
 	var variable = "hello world"
 	stg := NewLocalStorage()
@@ -32,10 +19,9 @@ func TestGoStorage(t *testing.T) {
 		assert.True(t, v != nil && v.(string) == variable)
 	})
 	time.Sleep(time.Millisecond)
-	stg.Clear()
 }
 
-// BenchmarkGoid-12    	278801190	         4.586 ns/op	       0 B/op	       0 allocs/op
+// BenchmarkGoid-12    	1000000000	         1.036 ns/op	       0 B/op	       0 allocs/op
 func BenchmarkGoid(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -44,18 +30,11 @@ func BenchmarkGoid(b *testing.B) {
 	}
 }
 
-// BenchmarkAllGoid-12    	 5949680	       228.3 ns/op	     896 B/op	       1 allocs/op
-func BenchmarkAllGoid(b *testing.B) {
-	const num = 16
-	for i := 0; i < num; i++ {
-		go func() {
-			time.Sleep(time.Second)
-		}()
-	}
-
+// BenchmarkCurr-12    	45119158	        26.00 ns/op	      16 B/op	       1 allocs/op
+func BenchmarkCurr(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = AllGoids()
+		_ = GetG()
 	}
 }
