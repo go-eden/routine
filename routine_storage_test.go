@@ -6,7 +6,6 @@ import (
 	"runtime"
 	"sync"
 	"testing"
-	"time"
 )
 
 func TestStorage(t *testing.T) {
@@ -25,7 +24,7 @@ func TestStorage(t *testing.T) {
 // test too many storages
 func TestStorageTooMany(t *testing.T) {
 	var ss []*storage
-	for i := len(keyMap); i < keyCnt; i++ {
+	for keyCount() < keyCnt {
 		ss = append(ss, newStorage())
 	}
 	assert.Panics(t, func() {
@@ -35,7 +34,7 @@ func TestStorageTooMany(t *testing.T) {
 
 	// Avoid affecting other tests
 	runtime.GC()
-	time.Sleep(time.Millisecond * 10)
+	nap()
 }
 
 func TestStorageConcurrency(t *testing.T) {

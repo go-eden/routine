@@ -37,6 +37,12 @@ func releaseKey(id int) {
 	delete(keyMap, id)
 }
 
+func keyCount() int {
+	keyLock.Lock()
+	defer keyLock.Unlock()
+	return len(keyMap)
+}
+
 type storage struct {
 	key int
 }

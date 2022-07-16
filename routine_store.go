@@ -3,6 +3,7 @@ package routine
 import (
 	"runtime"
 	"sync"
+	"sync/atomic"
 )
 
 var allStoreMap sync.Map
@@ -13,7 +14,7 @@ type store struct {
 	gid    int64
 	values map[int]interface{} // it should never be accessed in other routine, unless the go-routine was dead.
 
-	fcnt int8 // for test
+	fcnt int32 // for test
 }
 
 func (s *store) get(key int) interface{} {
@@ -53,7 +54,7 @@ func (s *store) register() {
 
 // finalize Do something when the current g may be dead
 func (s *store) finalize(_ interface{}) {
-	s.fcnt++
+	atomic.AddInt32(&s.fcnt, 1)
 	if s.g == nil {
 		return
 	}
@@ -66,7 +67,6 @@ func (s *store) finalize(_ interface{}) {
 
 	// do final
 	s.g = nil
-	s.values = nil
 	allStoreMap.Delete(s.gid)
 }
 

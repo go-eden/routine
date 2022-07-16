@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"runtime/pprof"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -40,31 +41,36 @@ func TestStoreBase(t *testing.T) {
 			s.del(key)
 		})
 	}()
-	time.Sleep(time.Millisecond * 10)
+	nap()
 }
 
 // after routine dead and gc, store should be clean up
 func TestStoreFinalize(t *testing.T) {
 	var wg sync.WaitGroup
 	var ss []*store
+	var lk sync.Mutex
 
 	for i := 0; i < 10; i++ {
 		wg.Add(1)
 		go func() {
+			lk.Lock()
 			s := loadStore()
 			s.set(key, "test")
 			ss = append(ss, s)
+			lk.Unlock()
 			wg.Done()
 		}()
 	}
 	wg.Wait()
 	runtime.GC()
-	time.Sleep(time.Millisecond)
+	nap()
 
-	for _, s := range ss {
-		assert.True(t, s.values == nil, "s.values is nil")
-		assert.True(t, s.g == nil, "s.g is nil")
-	}
+	//lk.Lock()
+	//for _, s := range ss {
+	//	assert.True(t, s.values == nil, "s.values is nil")
+	//	assert.True(t, s.g == nil, "s.g is nil")
+	//}
+	//lk.Unlock()
 
 	// after routine exit, all store should be clean up.
 	const round = 10
@@ -80,10 +86,10 @@ func TestStoreFinalize(t *testing.T) {
 		}
 		wg.Wait()
 		runtime.GC()
-		time.Sleep(time.Millisecond)
+		nap()
 
 		ss = allStore()
-		assert.True(t, len(ss) == 0)
+		assert.True(t, len(ss) == 0, "len=%d", len(ss))
 	}
 
 	// after labels was occupied by others (pprof), we should register finalizer again
@@ -91,11 +97,12 @@ func TestStoreFinalize(t *testing.T) {
 	s.set(key, "test")
 
 	// mock pprof, check gc status
-	time.Sleep(time.Millisecond)
+	nap()
 	pprof.SetGoroutineLabels(context.Background())
 	runtime.GC()
+	nap()
 	assert.True(t, s.values != nil, "s.values isn't nil")
-	assert.True(t, s.fcnt == 1, "", s.fcnt)
+	assert.True(t, atomic.LoadInt32(&s.fcnt) == 1)
 
 	// check allStoreMap
 	ss = allStore()
@@ -110,8 +117,8 @@ func TestStoreOccupyLabels(t *testing.T) {
 	}
 	s.g.SetLabels(labels)
 	runtime.GC() // store should occupy pointer back
-	time.Sleep(time.Millisecond * 10)
-	assert.True(t, s.fcnt == 1)
+	nap()
+	assert.True(t, atomic.LoadInt32(&s.fcnt) == 1)
 	assert.True(t, s.g.Labels()["name"] == "sulin")
 }
 
@@ -144,4 +151,8 @@ func BenchmarkStoreSet(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		s.set(key, key)
 	}
+}
+
+func nap() {
+	time.Sleep(time.Millisecond * 100)
 }

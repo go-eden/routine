@@ -4,8 +4,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"runtime"
 	"sync"
+	"sync/atomic"
 	"testing"
-	"time"
 )
 
 func TestG(t *testing.T) {
@@ -34,7 +34,7 @@ func TestG(t *testing.T) {
 
 func TestLabelsGC(t *testing.T) {
 	var wg sync.WaitGroup
-	var flag bool
+	var flag int64
 
 	a := newGAccessor()
 	wg.Add(1)
@@ -44,15 +44,15 @@ func TestLabelsGC(t *testing.T) {
 		t.Log("labels init: ", labels)
 		runtime.SetFinalizer(&labels, func(v interface{}) {
 			t.Log("labels is finalized: ", v)
-			flag = true
+			atomic.AddInt64(&flag, 1)
 		})
 		t.Log("sub routine exit")
 		wg.Done()
 	}()
 	wg.Wait()
 	runtime.GC()
-	time.Sleep(time.Millisecond * 10)
-	assert.True(t, flag, "labels should be finalized")
+	nap()
+	assert.True(t, atomic.LoadInt64(&flag) > 0, "labels should be finalized")
 }
 
 func TestGReusing(t *testing.T) {
@@ -60,9 +60,12 @@ func TestGReusing(t *testing.T) {
 	var lk sync.Mutex
 
 	// After g was created, it should never be released or finalized.
-	const hugeBatch = 1 << 20
+	const hugeBatch = 1 << 14
 	var allgs = make([]G, 0, hugeBatch)
 	for i := 0; i < hugeBatch; i++ {
+		if i%8000 == 0 {
+			nap() // avoid too much concurrency
+		}
 		wg.Add(1)
 		go func() {
 			lk.Lock()
@@ -74,7 +77,7 @@ func TestGReusing(t *testing.T) {
 	}
 	wg.Wait()
 	runtime.GC()
-	time.Sleep(time.Millisecond * 100)
+	nap()
 	for i, ga := range allgs {
 		assert.True(t, ga.Status() == GDead, "", i)
 	}

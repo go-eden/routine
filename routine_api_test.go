@@ -3,7 +3,6 @@ package routine
 import (
 	"github.com/stretchr/testify/assert"
 	"testing"
-	"time"
 )
 
 func TestGoid(t *testing.T) {
@@ -18,7 +17,7 @@ func TestGoStorage(t *testing.T) {
 		v := stg.Get()
 		assert.True(t, v != nil && v.(string) == variable)
 	})
-	time.Sleep(time.Millisecond)
+	nap()
 }
 
 // BenchmarkGoid-12    	1000000000	         1.036 ns/op	       0 B/op	       0 allocs/op
