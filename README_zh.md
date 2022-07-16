@@ -29,7 +29,7 @@ go get github.com/go-eden/routine
 
 ## 使用`goid`
 
-以下代码简单演示了`routine.Goid()`与`routine.AllGoids()`的使用：
+以下代码简单演示了`routine.Goid()`的使用：
 
 ```go
 package main
@@ -45,17 +45,14 @@ func main() {
 		time.Sleep(time.Second)
 	}()
 	goid := routine.Goid()
-	goids := routine.AllGoids()
 	fmt.Printf("curr goid: %d\n", goid)
-	fmt.Printf("all goids: %v\n", goids)
 }
 ```
 
-此例中`main`函数启动了一个新的协程，因此`Goid()`返回了主协程`1`，`AllGoids()`返回了主协程及协程`18`:
+此例中`main`函数启动了一个新的协程，因此`Goid()`返回了主协程`1`:
 
 ```text
 curr goid: 1
-all goids: [1 18]
 ```
 
 ## 使用`LocalStorage`
@@ -113,19 +110,7 @@ name2:  hello world
 
 ## `Goid() (id int64)`
 
-获取当前`goroutine`的`goid`。
-
-在正常情况下，`Goid()`优先尝试通过`go_tls`的方式直接获取，此操作性能极高，耗时通常只相当于`rand.Int()`的五分之一。
-
-若出现版本不兼容等错误时，`Goid()`会尝试降级，即从`runtime.Stack`信息中解析获取，此时性能会急剧下降约千倍，但它可以保证功能正常可用。
-
-## `AllGoids() (ids []int64)`
-
-获取当前进程全部活跃`goroutine`的`goid`。
-
-在`go 1.15`及更旧的版本中，`AllGoids()`会尝试从`runtime.Stack`信息中解析获取全部协程信息，但此操作非常低效，非常不建议在高频逻辑中使用。
-
-在`go 1.16`之后的版本中，`AllGoids()`会通过`native`的方式直接读取`runtime`的全局协程池信息，在性能上得到了极大的提高， 但考虑到生产环境中可能有万、百万级的协程数量，因此仍不建议在高频使用它。
+获取当前`goroutine`的`goid`，`Goid()`通过`go_tls`的方式直接获取，此操作性能极高，耗时通常只相当于`rand.Int()`的五分之一。
 
 ## `NewLocalStorage()`:
 
@@ -150,17 +135,15 @@ name2:  hello world
 + `Get() (value interface{})`：获取当前协程已设置的变量值，若未设置则为`nil`
 + `Set(v interface{}) interface{}`：设置当前协程的上下文变量值，返回之前已设置的旧值
 + `Del() (v interface{})`：删除当前协程的上下文变量值，返回已删除的旧值
-+ `Clear()`：彻底清理此上下文变量在所有协程中保存的旧值
 
 **提示：`Get/Set/Del`的内部实现采用无锁设计，在大部分情况下，它的性能表现都应该非常稳定且高效。**
 
 # 垃圾回收
 
-`routine`库内部维护了全局的`storages`变量，它存储了全部协程的上下文变量信息，在读写时基于协程的`goid`和协程变量的`ptr`进行变量寻址映射。
+在`v1`版本中，`routine`会通过一个后台定时任务，通过轮询的方式扫描已退出的协程，并主动清理掉相关的`LocalStorage`数据。
 
-在进程的整个生命周期中，它可能会创建于销毁无数个协程，那么这些协程的上下文变量如何清理呢？
-
-为解决这个问题，`routine`内部分配了一个全局的`GCTimer`，此定时器会在`storages`需要被清理时启动，定时扫描并清理`dead`协程在`storages`中缓存的上下文变量，从而避免可能出现的内存泄露隐患。
+在`v2`版本中，`routine`会主动监听`runtime.g`的生命周期，在协程退出后，系统执行垃圾回收时，通过`runtime`的`finalizer`机制，主动将无用的`LocalStorage`数据清理掉，
+从而避免内存的泄露。
 
 # License
 

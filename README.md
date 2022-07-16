@@ -35,7 +35,7 @@ go get github.com/go-eden/routine
 
 ## Use `goid`
 
-The following code simply demonstrates the use of `routine.Goid()` and `routine.AllGoids()`:
+The following code simply demonstrates the use of `routine.Goid()`:
 
 ```go
 package main
@@ -51,18 +51,14 @@ func main() {
 		time.Sleep(time.Second)
 	}()
 	goid := routine.Goid()
-	goids := routine.AllGoids()
 	fmt.Printf("curr goid: %d\n", goid)
-	fmt.Printf("all goids: %v\n", goids)
 }
 ```
 
-In this example, the `main` function starts a new coroutine, so `Goid()` returns the main coroutine `1`,
-and `AllGoids()` returns the main coroutine and coroutine `18`:
+In this example, the `main` function starts a new coroutine, so `Goid()` returns the main coroutine `1`:
 
 ```text
 curr goid: 1
-all goids: [1 18]
 ```
 
 ## Use `LocalStorage`
@@ -124,25 +120,6 @@ functions and implementation methods.
 
 Get the `goid` of the current `goroutine`.
 
-Under normal circumstances, `Goid()` first tries to obtain it directly through `go_tls`. This operation has extremely
-high performance and the time-consuming is usually only one-fifth of `rand.Int()`.
-
-If an error such as version incompatibility occurs, `Goid()` will try to downgrade, that is, parse it from
-the `runtime.Stack` information. At this time, the performance will drop sharply by about a thousand times, but it can
-ensure that the function is normally available.
-
-## `AllGoids() (ids []int64)`
-
-Get the `goid` of all active `goroutine` of the current process.
-
-In `go 1.15` and older versions, `AllGoids()` will try to parse and get all the coroutine information from
-the `runtime.Stack` information, but this operation is very inefficient and it is not recommended to use it in
-high-frequency logic. .
-
-In versions after `go 1.16`, `AllGoids()` will directly read the global coroutine pool information of `runtime`
-through `native`, which has greatly improved performance, but considering the production environment There may be tens
-of thousands or millions of coroutines, so it is still not recommended to use it at high frequencies.
-
 ## `NewLocalStorage()`:
 
 Create a new instance of `LocalStorage`, its design idea is very similar to the usage of `ThreadLocal` in other
@@ -171,24 +148,17 @@ Represents the context variable of the coroutine, and the supported functions in
 + `Set(v interface{}) interface{}`: Set the value of the context variable of the current coroutine, and return the old
   value that has been set before.
 + `Del() (v interface{})`: Delete the context variable value of the current coroutine and return the deleted old value.
-+ `Clear()`: Thoroughly clean up the old value of this context variable saved in all coroutines.
 
 **Tip: The internal implementation of `Get/Set/Del` adopts a lock-free design. In most cases, its performance should be
 very stable and efficient.**
 
 # Garbage Collection
 
-The `routine` library internally maintains the global `storages` variable, which stores all the context variable
-information of the coroutine, and performs variable addressing mapping based on the `goid` of the coroutine and
-the `ptr` of the coroutine variable when reading and writing.
+In the `v1` version, `routine` will setup a backgrount timer to scan all go-routines intervally, and find the exited routine to clean the related `LocalStorage` data.
 
-In the entire life cycle of a process, it may be created by destroying countless coroutines, so how to clean up the
-context variables of these `dead` coroutines?
-
-To solve this problem, a global `GCTimer` is allocated internally by `routine`. This timer will be started
-when `storages` needs to be cleaned up. It scans and cleans up the context variables cached by `dead` coroutine
-in `storages` at regular intervals, so as to avoid possible hidden dangers of memory leaks.
-
+In the `v2` version, `routine` will register a `finalizer` to listen the lifecycle of `runtime.g`. 
+After the coroutine exits, when garbage collection running, the `finalizer` mechanism of `runtime` will actively remove the useless `LocalStorage` `Data clean up,
+So as to avoid memory leaks.
 # License
 
 MIT
