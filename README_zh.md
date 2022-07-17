@@ -145,6 +145,13 @@ name2:  hello world
 在`v2`版本中，`routine`会主动监听`runtime.g`的生命周期，在协程退出后，系统执行垃圾回收时，通过`runtime`的`finalizer`机制，主动将无用的`LocalStorage`数据清理掉，
 从而避免内存的泄露。
 
+# 鸣谢
+
+内部模块`internal/g`的核心逻辑，来源于其他仓库，主要包括两个函数：
+
++ `G()`, 来源于 https://github.com/huandu/go-tls
++ `G0()`, 来源于 https://github.com/timandy/routine
+
 # License
 
 MIT
