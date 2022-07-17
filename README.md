@@ -159,6 +159,14 @@ In the `v1` version, `routine` will setup a backgrount timer to scan all go-rout
 In the `v2` version, `routine` will register a `finalizer` to listen the lifecycle of `runtime.g`. 
 After the coroutine exits, when garbage collection running, the `finalizer` mechanism of `runtime` will actively remove the useless `LocalStorage` `Data clean up,
 So as to avoid memory leaks.
+
+# Thanks
+
+The internal model `internal/g` is from other repos, mainly two functions:
+
++ `G()`, from https://github.com/huandu/go-tls
++ `G0()`, from https://github.com/timandy/routine
+
 # License
 
 MIT
