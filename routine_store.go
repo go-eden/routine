@@ -1,6 +1,8 @@
 package routine
 
 import (
+	"fmt"
+	"os"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -61,7 +63,15 @@ func (s *store) finalize(_ interface{}) {
 
 	// Maybe others (pprof) replaced our labels, register it again.
 	if s.g.Status() != GDead {
-		go s.register()
+		go func() {
+			defer func() {
+				if err := recover(); err != nil {
+					fmt.Fprintf(os.Stderr, "store.finalize panic error: %v", err)
+				}
+			}()
+
+			s.register()
+		}()
 		return
 	}
 

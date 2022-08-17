@@ -1,7 +1,9 @@
 package routine
 
 import (
+	"fmt"
 	"github.com/go-eden/routine/internal/g"
+	"os"
 	"unsafe"
 )
 
@@ -57,6 +59,12 @@ type ImmutableContext struct {
 func Go(f func()) {
 	ic := BackupContext()
 	go func() {
+		defer func() {
+			if err := recover(); err != nil {
+				fmt.Fprintf(os.Stderr, "routine.Go panic error: %v", err)
+			}
+		}()
+
 		InheritContext(ic)
 		f()
 	}()
