@@ -1,7 +1,10 @@
 package routine
 
 import (
+	"fmt"
+	"os"
 	"runtime"
+	"runtime/debug"
 	"sync"
 	"sync/atomic"
 )
@@ -44,6 +47,14 @@ func (s *store) del(key int) interface{} {
 
 // register Register finalizer into goroutine's lifecycle
 func (s *store) register() {
+	defer func() {
+		if e := recover(); e != nil {
+			errmsg := fmt.Sprintf("#### PANIC ####\n "+
+				"## Something unexpected happened, please report it to us in https://github.com/go-eden/routine/issues \n"+
+				"## Error Message: %v\n%s", e, string(debug.Stack()))
+			_, _ = fmt.Fprint(os.Stderr, errmsg)
+		}
+	}()
 	labels := make(map[string]string)
 	for k, v := range s.g.Labels() {
 		labels[k] = v
