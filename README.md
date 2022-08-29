@@ -154,11 +154,11 @@ very stable and efficient.**
 
 # Garbage Collection
 
-In the `v1` version, `routine` will setup a backgrount timer to scan all go-routines intervally, and find the exited routine to clean the related `LocalStorage` data.
+Before the `v1.0.0` version, `routine` will setup a backgrount timer to scan all go-routines intervally, and find the exited routine to clean the related `LocalStorage` data.
 
-In the `v2` version, `routine` will register a `finalizer` to listen the lifecycle of `runtime.g`. 
-After the coroutine exits, when garbage collection running, the `finalizer` mechanism of `runtime` will actively remove the useless `LocalStorage` `Data clean up,
-So as to avoid memory leaks.
+After the `v1.0.0` version, `routine` will register a `finalizer` to listen the lifecycle of `runtime.g`. 
+
+After the coroutine exits, when runtime's GC running, the `finalizer` mechanism of `runtime` will actively remove the useless `LocalStorage` `Data clean up, So as to avoid memory leaks.
 
 # Thanks
 
