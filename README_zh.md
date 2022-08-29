@@ -140,9 +140,9 @@ name2:  hello world
 
 # 垃圾回收
 
-在`v1`版本中，`routine`会通过一个后台定时任务，通过轮询的方式扫描已退出的协程，并主动清理掉相关的`LocalStorage`数据。
+在`v1.0.0`版本之前，`routine`会通过一个后台定时任务，通过轮询的方式扫描已退出的协程，并主动清理掉相关的`LocalStorage`数据。
 
-在`v2`版本中，`routine`会主动监听`runtime.g`的生命周期，在协程退出后，系统执行垃圾回收时，通过`runtime`的`finalizer`机制，主动将无用的`LocalStorage`数据清理掉，
+在`v1.0.0`版本之后，`routine`会主动监听`runtime.g`的生命周期，在协程退出后，系统执行垃圾回收时，通过`runtime`的`finalizer`机制，主动将无用的`LocalStorage`数据清理掉，
 从而避免内存的泄露。
 
 # 鸣谢
