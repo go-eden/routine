@@ -18,6 +18,15 @@ func TestGoStorage(t *testing.T) {
 		assert.True(t, v != nil && v.(string) == variable)
 	})
 	nap()
+
+	stg2 := NewLocalStorage()
+	stg2.Set(int64(100))
+
+	v := stg.Get()
+	assert.True(t, v != nil && v.(string) == variable)
+
+	v = stg2.Get()
+	assert.True(t, v != nil && v.(int64) == 100)
 }
 
 // BenchmarkGoid-12    	1000000000	         1.036 ns/op	       0 B/op	       0 allocs/op

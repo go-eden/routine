@@ -83,9 +83,9 @@ func InheritContext(ic *ImmutableContext) {
 	}
 }
 
-// NewLocalStorage create and return an new LocalStorage instance.
+// NewLocalStorage create and return a new LocalStorage instance.
 func NewLocalStorage() LocalStorage {
-	return new(storage)
+	return newStorage()
 }
 
 // Goid get the unique goid of the current routine.
