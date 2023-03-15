@@ -3,38 +3,24 @@ package routine
 import (
 	"github.com/stretchr/testify/assert"
 	"math/rand"
-	"runtime"
 	"sync"
 	"testing"
 )
 
 func TestStorage(t *testing.T) {
-	s := newStorage()
+	s := newStorage[interface{}]()
 
 	for i := 0; i < 1000; i++ {
 		str := "hello"
 		s.Set(str)
 		p := s.Get()
 		assert.True(t, p.(string) == str)
+		tmp := s.Del()
+		assert.True(t, tmp == str)
+		tmp = s.Del()
+		assert.True(t, tmp == nil)
 	}
-	assert.True(t, s.Del() != nil)
 	assert.True(t, s.Get() == nil)
-}
-
-// test too many storages
-func TestStorageTooMany(t *testing.T) {
-	var ss []*storage
-	for keyCount() < keyCnt {
-		ss = append(ss, newStorage())
-	}
-	assert.Panics(t, func() {
-		newStorage()
-	})
-	_ = ss
-
-	// Avoid affecting other tests
-	runtime.GC()
-	nap()
 }
 
 func TestStorageConcurrency(t *testing.T) {
@@ -42,7 +28,7 @@ func TestStorageConcurrency(t *testing.T) {
 	const loopTimes = 100000
 	var wg sync.WaitGroup
 
-	s := newStorage()
+	s := newStorage[interface{}]()
 
 	wg.Add(concurrency)
 	for i := 0; i < concurrency; i++ {
@@ -60,8 +46,9 @@ func TestStorageConcurrency(t *testing.T) {
 }
 
 // BenchmarkStorage-12    	 8102013	       133.6 ns/op	      16 B/op	       1 allocs/op
+// BenchmarkStorage-10    	12186906	        87.35 ns/op	      16 B/op	       1 allocs/op
 func BenchmarkStorage(b *testing.B) {
-	s := newStorage()
+	s := newStorage[interface{}]()
 	var variable = "hello world"
 	b.ReportAllocs()
 	b.ResetTimer()

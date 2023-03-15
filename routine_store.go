@@ -15,19 +15,19 @@ var allStoreMap sync.Map
 type store struct {
 	g      *gAccessor
 	gid    int64
-	values map[int]interface{} // it should never be accessed in other routine, unless the go-routine was dead.
+	values map[int64]interface{} // it should never be accessed in other routine, unless the go-routine was dead.
 
 	fcnt int32 // for test
 }
 
-func (s *store) get(key int) interface{} {
+func (s *store) get(key int64) interface{} {
 	if Goid() != s.gid {
 		panic("Cannot access store in other routine.")
 	}
 	return s.values[key]
 }
 
-func (s *store) set(key int, value interface{}) interface{} {
+func (s *store) set(key int64, value interface{}) interface{} {
 	if Goid() != s.gid {
 		panic("Cannot access store in other routine.")
 	}
@@ -36,7 +36,7 @@ func (s *store) set(key int, value interface{}) interface{} {
 	return oldValue
 }
 
-func (s *store) del(key int) interface{} {
+func (s *store) del(key int64) interface{} {
 	if Goid() != s.gid {
 		panic("Cannot access store in other routine.")
 	}
@@ -95,7 +95,7 @@ func loadStore() (s *store) {
 	s = &store{
 		g:      newGAccessor(),
 		gid:    gid,
-		values: map[int]interface{}{},
+		values: map[int64]interface{}{},
 	}
 	s.register()
 

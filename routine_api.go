@@ -35,25 +35,25 @@ type G interface {
 }
 
 // LocalStorage provides goroutine-local variables.
-type LocalStorage interface {
+type LocalStorage[T interface{}] interface {
 
 	// Get returns the value in the current goroutine's local storage, if it was set before.
-	Get() (value interface{})
+	Get() (value T)
 
 	// Set copy the value into the current goroutine's local storage, and return the old value.
-	Set(value interface{}) (oldValue interface{})
+	Set(value T) (oldValue T)
 
 	// Del delete the value from the current goroutine's local storage, and return it.
-	Del() (oldValue interface{})
+	Del() (oldValue T)
 }
 
 // ImmutableContext represents all local allStoreMap of one goroutine.
 type ImmutableContext struct {
 	gid    int64
-	values map[int]interface{}
+	values map[int64]interface{}
 }
 
-// Go start an new goroutine, and copy all local allStoreMap from current goroutine.
+// Go start a new goroutine, and copy all local allStoreMap from current goroutine.
 func Go(f func()) {
 	ic := BackupContext()
 	go func() {
@@ -65,7 +65,7 @@ func Go(f func()) {
 // BackupContext copy all local allStoreMap into an ImmutableContext instance.
 func BackupContext() *ImmutableContext {
 	s := loadStore()
-	data := make(map[int]interface{}, len(s.values))
+	data := map[int64]interface{}{}
 	for k, v := range s.values {
 		data[k] = v
 	}
@@ -84,8 +84,8 @@ func InheritContext(ic *ImmutableContext) {
 }
 
 // NewLocalStorage create and return a new LocalStorage instance.
-func NewLocalStorage() LocalStorage {
-	return newStorage()
+func NewLocalStorage[T interface{}]() LocalStorage[T] {
+	return newStorage[T]()
 }
 
 // Goid get the unique goid of the current routine.

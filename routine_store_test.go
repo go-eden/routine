@@ -29,7 +29,7 @@ func TestStoreBase(t *testing.T) {
 	v = s.get(key)
 	assert.True(t, v == nil)
 
-	// other routine cannot access s
+	// other routine cannot access `s`
 	go func() {
 		assert.Panics(t, func() {
 			s.set(key, "test")
@@ -42,6 +42,11 @@ func TestStoreBase(t *testing.T) {
 		})
 	}()
 	nap()
+
+	// mock extreme case
+	s.g = nil
+	s.finalize(nil)
+	allStoreMap.Delete(s.gid)
 }
 
 // after routine dead and gc, store should be clean up
@@ -123,6 +128,7 @@ func TestStoreOccupyLabels(t *testing.T) {
 }
 
 // BenchmarkLoadStore-12    	52496490	        20.48 ns/op	       0 B/op	       0 allocs/op
+// BenchmarkLoadStore-10    	91689721	        12.85 ns/op	       0 B/op	       0 allocs/op
 func BenchmarkLoadStore(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
@@ -132,6 +138,7 @@ func BenchmarkLoadStore(b *testing.B) {
 }
 
 // BenchmarkStoreGet-12    	424059255	         2.943 ns/op	       0 B/op	       0 allocs/op
+// BenchmarkStoreGet-10    	466748467	         2.286 ns/op	       0 B/op	       0 allocs/op
 func BenchmarkStoreGet(b *testing.B) {
 	s := loadStore()
 
@@ -143,6 +150,7 @@ func BenchmarkStoreGet(b *testing.B) {
 }
 
 // BenchmarkStoreSet-12    	82243570	        13.17 ns/op	       0 B/op	       0 allocs/op
+// BenchmarkStoreSet-10    	133780078	         8.714 ns/op	   0 B/op	       0 allocs/op
 func BenchmarkStoreSet(b *testing.B) {
 	s := loadStore()
 
